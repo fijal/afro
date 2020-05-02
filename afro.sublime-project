@@ -1,0 +1,10 @@
+{
+    "folders":[
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "SublimeLinter.linters.pyflakes.python": "/Users/dev/.virtualenvs/python37/bin/python3"
+    }
+}
