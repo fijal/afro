@@ -115,3 +115,13 @@ async def test_pictures(db, tmpdir):
 
     r = await get(client, '/problem/%d/photos' % problem_id)
     assert r['photos'] == ['photo0.jpg']
+
+    await post(client, '/photo/associate', form={
+        'photo_filename': 'photo0.jpg',
+        'type': 'block',
+        'id': block_id
+        })
+
+    r = await get(client, '/block/%d/photos' % block_id)
+
+    assert r['photos'] == ['photo0.jpg']

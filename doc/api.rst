@@ -65,6 +65,21 @@ Returns:
     problems: list of problem ids    
 }
 
+GET /block/[id]/photos
+
+Get a list of photos for a specific block
+
+Input:
+
+id: integer - ID of the block
+
+Returns:
+
+{
+    status: error | "OK"
+    photos: list of strings - list of photo filenames    
+}
+
 POST /problem/add
 
 Adds a problem to an existing block

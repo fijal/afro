@@ -3,7 +3,7 @@ from quart import request, abort
 from sqlalchemy import select, func
 
 from afro.db import get_db
-from afro.model import block, problem, photo, photo_problem
+from afro.model import block, problem, photo, photo_problem, photo_block
 
 class State:
     pass
@@ -45,6 +45,8 @@ def wrap(required_args=None, optional_args=None):
                 params = check_parameters(form)
                 r = orig_func(params, *args, **kwds)
                 r = (await r).copy()
+                if 'status' in r:
+                    return r
                 r['status'] = 'OK'
                 return r
             except VerifyError as e:
@@ -83,6 +85,16 @@ def register_routes(app, state):
         problems = [x[0] for x in prob_q]
         return {"status": 'OK', 'sector': q[0], 'name': q[1],
                 'lat': q[2], 'lon': q[3], 'problems': problems}
+
+    @app.route('/block/<int:block_id>/photos')
+    async def block_get_photos(block_id):
+        q = list(db.execute(select([block.c.id]).where(
+            problem.c.id == block_id)))
+        if len(q) == 0:
+            return {'status': 'no block id %d found' % block_id}
+        q = list(db.execute(select([photo_block.c.photo]).where(
+                 photo_block.c.block == q[0][0])))
+        return {'status': 'OK', 'photos': [x[0] for x in q]}
 
     @app.route('/problem/add', methods=['POST'])
     @wrap(required_args=dict(block=int), optional_args=dict(
@@ -145,6 +157,16 @@ def register_routes(app, state):
             db.execute(photo_problem.insert().values({
                 'photo': photo_filename,
                 'problem': id
+                }))
+            return {'status': 'OK'}
+        elif tp == 'block':
+            q = list(db.execute(select([block.c.id]).where(
+                block.c.id == id)))
+            if len(q) == 0:
+                return {'status': 'unknown block id %d' % id}
+            db.execute(photo_block.insert().values({
+                'photo': photo_filename,
+                'block': id
                 }))
             return {'status': 'OK'}
         else:
