@@ -1,5 +1,5 @@
 
-import pytest, json
+import pytest, json, py
 from quart import Quart
 
 from afro.db import get_db
@@ -10,7 +10,7 @@ def init_db(state):
     meta.create_all(state.engine)
 
 @pytest.fixture
-def db(tmpdir):
+def db():
     app = Quart("afro")
     app.config['DATABASE'] = 'sqlite:///:memory:'
     state = State()
@@ -22,8 +22,8 @@ def db(tmpdir):
 class Error(Exception):
     pass
 
-async def post(client, url, form=None):
-    resp = await client.post(url, form=form)
+async def post(client, url, form=None, data=None):
+    resp = await client.post(url, form=form, data=data)
     if resp.status_code != 200:
         raise Error(resp.status_code)
     r = json.loads((await resp.get_data()).decode('utf8'))
@@ -88,4 +88,30 @@ async def test_block_problem(db):
     assert r == {'status': 'OK', 'sector': 0, 'lat': 32.15, 'lon': 15.36,
                  'name': 'foo', 'problems': [problem_id]}
 
+@pytest.mark.asyncio
+async def test_pictures(db, tmpdir):
+    client = db.test_client()
 
+    r = await post(client, '/block/add', form={'sector': '0',
+        'name': 'foo', 'lat': '32.15', 'lon': '15.36'})
+    block_id = r['id']
+    r = await post(client, '/problem/add', form=dict(
+        block=block_id, name="foo bar"
+        ))
+    problem_id = r['id']
+    db.config['tmpdir'] = tmpdir
+    r = await post(client, '/photo/add', data=b"foobarbaz")
+    assert r['filename'] == 'photo0.jpg'
+    r = await get(client, '/photo/photo0.jpg')
+    assert r['type'] == 'jpg'
+    r = await client.get('/photo/raw/photo0.jpg')
+    assert (await r.get_data()) == b'foobarbaz'
+
+    await post(client, '/photo/associate', form={
+        'photo_filename': 'photo0.jpg',
+        'type': 'problem',
+        'id': problem_id
+        })
+
+    r = await get(client, '/problem/%d/photos' % problem_id)
+    assert r['photos'] == ['photo0.jpg']

@@ -89,7 +89,7 @@ Get a specific problem
 
 Input:
 
-id: integer - id of the block
+id: integer - id of the problem
 
 Returns:
 
@@ -100,6 +100,21 @@ Returns:
     grade: string
     description: string
     block: integer - id of the block this problem is on
+}
+
+GET /problem/[id]/photos
+
+Get a list of photos associated with a given problem
+
+Input:
+
+id: integer - id of the problem
+
+Returns:
+
+{
+    status: error | "OK"
+    photos: list of strings - list of photo filenames
 }
 
 POST /photo/add
@@ -114,7 +129,7 @@ Returns:
 
 {
     status: error | "OK"
-    id: id-of-photo
+    filename: photo filename
 }
 
 POST /photo/associate
@@ -123,7 +138,7 @@ Associate a photo with a boulder/problem/sector
 
 Input:
 
-photo_id: integer - ID of a photo
+photo_filename: str - photo filename
 type: 'boulder' | 'problem' | 'sector' | 'area'
 id: ID of boulder/problem/sector/area
 

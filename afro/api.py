@@ -1,9 +1,9 @@
 
-from quart import request
-from sqlalchemy import select
+from quart import request, abort
+from sqlalchemy import select, func
 
 from afro.db import get_db
-from afro.model import block, problem
+from afro.model import block, problem, photo, photo_problem
 
 class State:
     pass
@@ -105,5 +105,65 @@ def register_routes(app, state):
         q = list(q[0])
         return {"status": 'OK', 'block': q[0], 'name': q[1],
                 'description': q[2], 'grade': q[3]}
+
+    @app.route('/problem/<int:problem_id>/photos')
+    async def problem_get_photos(problem_id):
+        q = list(db.execute(select([problem.c.id]).where(
+            problem.c.id == problem_id)))
+        if len(q) == 0:
+            return {'status': 'no problem id %d found' % problem_id}
+        q = list(db.execute(select([photo_problem.c.photo]).where(
+                 photo_problem.c.problem == q[0][0])))
+        return {'status': 'OK', 'photos': [x[0] for x in q]}
+
+    @app.route('/photo/add', methods=['POST'])
+    async def photo_add():
+        data = await request.data
+        r = list(db.execute(select([func.count(photo)])))
+        last_photo = r[0][0]
+        photo_file = "photo%d.jpg" % (last_photo,)
+        with app.config['tmpdir'].join(photo_file).open('wb') as f:
+            f.write(data)
+        db.execute(photo.insert().values({'filename': photo_file}))
+        return {'status': 'OK', 'filename': photo_file}
+
+    @app.route('/photo/associate', methods=['POST'])
+    @wrap(required_args=dict(photo_filename=str, id=int, type=str))
+    async def photo_associate(parameters):
+        photo_filename = parameters['photo_filename']
+        q = list(db.execute(select([photo.c.filename]).where(
+            photo.c.filename == photo_filename)))
+        if len(q) == 0:
+            return {'status': 'photo %s not found' % photo_filename}
+        tp = parameters['type']
+        id = parameters['id']
+        if tp == 'problem':
+            q = list(db.execute(select([problem.c.id]).where(
+                problem.c.id == id)))
+            if len(q) == 0:
+                return {'status': 'unknown problem id %d' % id}
+            db.execute(photo_problem.insert().values({
+                'photo': photo_filename,
+                'problem': id
+                }))
+            return {'status': 'OK'}
+        else:
+            return {'status': 'unknown type %s' % parameters['type']}
+
+    @app.route('/photo/<photo_filename>')
+    async def photo_get(photo_filename):
+        q = list(db.execute(select([photo.c.filename]).where(
+            photo.c.filename == photo_filename)))
+        if len(q) == 0:
+            return {'status': 'photo not found'}
+        return {'status': 'OK', 'type': 'jpg'}
+
+    @app.route('/photo/raw/<photo_filename>')
+    async def photo_raw_get(photo_filename):
+        q = list(db.execute(select([photo.c.filename]).where(
+            photo.c.filename == photo_filename)))
+        if len(q) == 0:
+            return "", 404
+        return open(app.config['tmpdir'].join(photo_filename), 'rb').read()
 
     return app
