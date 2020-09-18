@@ -68,7 +68,7 @@ def register_routes(app, state):
         description=str
     ))
     async def block_add(parameters):
-        r = list(db.execute(block.insert().values(**parameters)))
+        r = db.execute(block.insert().values(**parameters))
         return {'id': r.inserted_primary_key[0]}
 
     @app.route('/block/<int:block_id>')
