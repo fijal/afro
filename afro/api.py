@@ -75,7 +75,7 @@ def register_routes(app, state):
     async def block_get(block_id):
         q = list(db.execute(
             select([block.c.sector, block.c.name,
-                block.c.lat, block.c.lon])))
+                block.c.lat, block.c.lon]).where(block.c.id == block_id)))
         if len(q) == 0:
             return {'status': 'no block id %s found' % block_id}
         assert len(q) == 1
