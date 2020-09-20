@@ -125,3 +125,34 @@ async def test_pictures(db, tmpdir):
     r = await get(client, '/block/%d/photos' % block_id)
 
     assert r['photos'] == ['photo0.jpg']
+
+@pytest.mark.asyncio
+async def test_lines(db, tmpdir):
+    client = db.test_client()
+
+    r = await post(client, '/block/add', form={'sector': '0',
+        'name': 'foo', 'lat': '32.15', 'lon': '15.36'})
+    block_id = r['id']
+    r = await post(client, '/problem/add', form=dict(
+        block=block_id, name="foo bar"
+        ))
+    problem_id = r['id']
+    db.config['tmpdir'] = tmpdir
+    r = await post(client, '/photo/add', data=b"foobarbaz")
+    assert r['filename'] == 'photo0.jpg'
+
+    r = await post(client, '/line/add', form=dict(
+        photo_filename='photo0.jpg', problem=problem_id,
+        point_list="0.1,0.2,0.3,0.4"
+        ))
+    assert r['status'] == 'OK'
+    line_id = r['id']
+
+    r = await get(client, '/line/%d' % line_id)
+    assert r['status'] == 'OK'
+    assert r['points'] == [[0.1, 0.2], [0.3, 0.4]]
+
+    r = await get(client, '/photo/photo0.jpg')
+    assert r['status'] == 'OK'
+    assert r['lines'] == [{'id': 1, 'problem': problem_id,
+       'points': [[0.1, 0.2], [0.3, 0.4]]}]

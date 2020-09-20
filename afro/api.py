@@ -3,13 +3,42 @@ from quart import request, abort
 from sqlalchemy import select, func
 
 from afro.db import get_db
-from afro.model import block, problem, photo, photo_problem, photo_block
+from afro.model import (block, problem, photo, photo_problem, photo_block,
+                        line, point)
 
 class State:
     pass
 
 class VerifyError(Exception):
     pass
+
+def get_all_points(db, line_id):
+    r = list(db.execute(select([point.c.index, point.c.x, point.c.y]).where(
+             point.c.line_id == line_id)))
+    res = [None] * len(r)
+    for index, x, y in r:
+        res[index] = (x, y)
+    return res
+
+def point_list_verifier(v):
+    items = v.split(",")
+    if len(items) % 2 != 0:
+        raise VerifyError("wrong number of numbers in points, must be divisable by 2")
+    if len(items) < 2:
+        raise VerifyError("you need at least two points to make a line, %d supplied" % len(items))
+    r = []
+    for i, item in enumerate(items):
+        try:
+            cur = float(item)
+        except ValueError:
+            raise VerifyError("Not a float: %s" % item)
+        if not 0.0 <= cur <= 1.0:
+            raise VerifyError("%s not in range (0, 1)" % cur)
+        if i % 2 == 0:
+            next_item = item
+        else:
+            r.append((next_item, item))
+    return r
 
 def wrap(required_args=None, optional_args=None):
     def check_parameters(form):
@@ -178,7 +207,15 @@ def register_routes(app, state):
             photo.c.filename == photo_filename)))
         if len(q) == 0:
             return {'status': 'photo not found'}
-        return {'status': 'OK', 'type': 'jpg'}
+        lines = list(db.execute(select([line.c.id, line.c.problem]).where(
+            line.c.photo == photo_filename)))
+        return {'status': 'OK', 'type': 'jpg', 'lines': [
+            {
+                'id': line_id,
+                'problem': problem_id,
+                'points': get_all_points(db, line_id)
+            } for (line_id, problem_id) in lines]
+        }
 
     @app.route('/photo/raw/<photo_filename>')
     async def photo_raw_get(photo_filename):
@@ -187,5 +224,42 @@ def register_routes(app, state):
         if len(q) == 0:
             return "", 404
         return open(app.config['tmpdir'].join(photo_filename), 'rb').read()
+
+    @app.route('/line/add', methods=['POST'])
+    @wrap(required_args=dict(
+        problem=int,
+        point_list=point_list_verifier,
+        photo_filename=str
+        ))
+    async def line_add(parameters):
+        problem_id = parameters['problem']
+        photo_filename = parameters['photo_filename']
+        r = list(db.execute(select([problem.c.id]).where(problem.c.id == problem_id)))
+        if len(r) == 0:
+            return {'status': "can't find problem id %d" % problem_id}
+        r = list(db.execute(select([photo.c.filename]).where(photo.c.filename == photo_filename)))
+        if len(r) == 0:
+            return {'status': "can't find photo filename %s" % photo_filename}
+        r = db.execute(line.insert().values({
+            'problem': problem_id,
+            'photo': photo_filename
+            }))
+        line_id = r.lastrowid
+        for i, (x, y) in enumerate(parameters['point_list']):
+            db.execute(point.insert().values({
+                'line_id': line_id,
+                'index': i,
+                'x': x,
+                'y': y
+                }))
+        return {'status': 'OK', 'id': line_id}
+
+    @app.route('/line/<int:line_id>')
+    async def line_get(line_id):
+        r = list(db.execute(select([line.c.id]).where(line.c.id == line_id)))
+        if len(r) == 0:
+            return {'success': "can't find line ID %d" % line_id}
+        points = get_all_points(db, line_id)
+        return {'status': 'OK', 'points': points}
 
     return app

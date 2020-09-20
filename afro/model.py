@@ -52,6 +52,20 @@ photo_block = Table('photo_block', meta,
     Column('block', Integer, ForeignKey('block.id'))
 )
 
+line = Table('line', meta,
+    Column('id', Integer, primary_key=True, autoincrement=True),
+    Column('photo', String, ForeignKey('photo.filename')),
+    Column('problem', Integer, ForeignKey('problem.id'))
+)
+
+point = Table('point', meta,
+    Column('id', Integer, primary_key=True, autoincrement=True),
+    Column('line_id', Integer, ForeignKey('line.id')),
+    Column('x', Float),
+    Column('y', Float),
+    Column('index', Integer)
+)
+
 # describe a line on the photo linked to a specific problem
 #polyline = Table('polyline')
 

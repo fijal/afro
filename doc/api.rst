@@ -144,7 +144,7 @@ Returns:
 
 {
     status: error | "OK"
-    filename: photo filename
+    filename: str - photo filename
 }
 
 POST /photo/associate
@@ -155,7 +155,7 @@ Input:
 
 photo_filename: str - photo filename
 type: 'boulder' | 'problem' | 'sector' | 'area'
-id: ID of boulder/problem/sector/area
+id: int - ID of boulder/problem/sector/area
 
 Returns:
 
@@ -163,7 +163,7 @@ Returns:
     status: 'OK' | error
 }
 
-GET /photo/[id]
+GET /photo/[filename]
 
 Get a specific photo
 
@@ -171,9 +171,50 @@ Returns:
 
 {
     status: error | "OK"
+    lines: list of lines. Each line is of following:
+    {
+        id: int - id
+        problem: int - problem id
+        points: list of tuples of floats describing line points
+    }
     type: 'jpg' | 'png'
 }
 
-GET /photo/raw/[id]
+GET /photo/raw/[filename]
 
 Returns raw data of the photo
+
+POST /line/add
+
+Add a new line to existing photo
+
+Input:
+
+photo_filename: string - filename of the photo that we are associating
+                         the line with
+problem: int - id of the problem associated with that line
+point_list: list_of_float_points - list of points on the picture
+            The list is a comma separate list of float values of x and y in range
+            between 0 and 1, where 0,0 means left top and 1,1 means right bottom.
+            So for example two points, (0.5, 0.4) and (0.2, 0.1) would be
+            0.5,0.5,0.2,0.1
+
+Returns:
+
+{
+    status: 'OK' | error
+    id: int - ID of a newly created line
+}
+
+GET /line/[id]
+
+Get a specific line
+
+Returns:
+
+{
+    status: 'OK' | error
+    points: list_of_float_tuples - list of points grouped by (x, y), so
+            [(x0, y0), (x1, y1), (x2, y2)] etc.
+}
+
