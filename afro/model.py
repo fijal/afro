@@ -25,6 +25,7 @@ block = Table('block', meta,
     Column('id', Integer, primary_key=True, autoincrement=True),
     Column('sector', Integer, ForeignKey('sector.id')),
     Column('name', String),
+    Column('description', String),
     Column('lat', Float),
     Column('lon', Float)
 )
