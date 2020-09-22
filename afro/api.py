@@ -1,4 +1,6 @@
 
+import re
+
 from quart import request, abort
 from sqlalchemy import select, func
 
@@ -104,7 +106,8 @@ def register_routes(app, state):
     async def block_get(block_id):
         q = list(db.execute(
             select([block.c.sector, block.c.name,
-                block.c.lat, block.c.lon]).where(block.c.id == block_id)))
+                block.c.lat, block.c.lon, block.c.description]).where(
+                                       block.c.id == block_id)))
         if len(q) == 0:
             return {'status': 'no block id %s found' % block_id}
         assert len(q) == 1
@@ -113,7 +116,8 @@ def register_routes(app, state):
             select([problem.c.id]).where(problem.c.block == block_id)))
         problems = [x[0] for x in prob_q]
         return {"status": 'OK', 'sector': q[0], 'name': q[1],
-                'lat': q[2], 'lon': q[3], 'problems': problems}
+                'lat': q[2], 'lon': q[3], 'problems': problems,
+                'description': q[4]}
 
     @app.route('/block/<int:block_id>/photos')
     async def block_get_photos(block_id):
@@ -124,6 +128,27 @@ def register_routes(app, state):
         q = list(db.execute(select([photo_block.c.photo]).where(
                  photo_block.c.block == q[0][0])))
         return {'status': 'OK', 'photos': [x[0] for x in q]}
+
+    @app.route('/block/list')
+    async def block_list():
+        if 'q' not in request.args:
+            return {'status': 'Query not passed, please pass q parameter'}
+        m = re.match(r'^sector:(\d+)$', request.args['q'])
+        if not m:
+            return {'status': 'Unsupported query - %s' % request.args['q']}
+        sector_id = int(m.group(1))
+        l = list(db.execute(select([block.c.id, block.c.name, block.c.description,
+            block.c.lat, block.c.lon]).where(block.c.sector == sector_id)))
+        r = []
+        for id, name, description, lat, lon in l:
+            r.append({
+                'id': id,
+                'name': name,
+                'description': description,
+                'lat': lat,
+                'lon': lon
+                })
+        return {'status': 'OK', 'blocks': r}
 
     @app.route('/problem/add', methods=['POST'])
     @wrap(required_args=dict(block=int), optional_args=dict(
@@ -258,7 +283,7 @@ def register_routes(app, state):
     async def line_get(line_id):
         r = list(db.execute(select([line.c.id]).where(line.c.id == line_id)))
         if len(r) == 0:
-            return {'success': "can't find line ID %d" % line_id}
+            return {'status': "can't find line ID %d" % line_id}
         points = get_all_points(db, line_id)
         return {'status': 'OK', 'points': points}
 

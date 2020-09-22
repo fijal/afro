@@ -86,7 +86,7 @@ async def test_block_problem(db):
 
     r = await get(client, '/block/%s' % block_id)
     assert r == {'status': 'OK', 'sector': 0, 'lat': 32.15, 'lon': 15.36,
-                 'name': 'foo', 'problems': [problem_id]}
+                 'name': 'foo', 'problems': [problem_id], 'description': None}
 
 @pytest.mark.asyncio
 async def test_pictures(db, tmpdir):
@@ -156,3 +156,25 @@ async def test_lines(db, tmpdir):
     assert r['status'] == 'OK'
     assert r['lines'] == [{'id': 1, 'problem': problem_id,
        'points': [[0.1, 0.2], [0.3, 0.4]]}]
+
+@pytest.mark.asyncio
+async def test_boulder_list(db):
+    client = db.test_client()
+
+    r = await post(client, '/block/add', form={'sector': '0',
+        'name': 'foo', 'description': 'some descr', 'lat': '32.15', 'lon': '15.36'})
+    block_id = r['id']
+
+    r = await get(client, '/block/list?q=sector:0')
+    assert r['blocks'] == [
+        {'id': block_id, 'name': 'foo', 'description': 'some descr', 'lat': 32.15, 'lon': 15.36}
+    ]
+    r = await post(client, '/block/add', form={'sector': '0',
+        'name': 'foo2', 'description': 'some descr2', 'lat': '2.15', 'lon': '5.36'})
+    block2_id = r['id']
+    r = await get(client, '/block/list?q=sector:0')
+    assert r['blocks'] == [
+        {'id': block_id, 'name': 'foo', 'description': 'some descr', 'lat': 32.15, 'lon': 15.36},
+        {'id': block2_id, 'name': 'foo2', 'description': 'some descr2', 'lat': 2.15, 'lon': 5.36}
+    ]
+    

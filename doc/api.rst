@@ -38,15 +38,17 @@ Runs the query on block list. Allowed queries:
 
 q=sector:id - returns all the blocks within a sector
 
-Returns a list of block ids for the query
-
+Returns:
 {
-    id: integer - id of the block
-    name: string
-    description: string
-    lat: float
-    lon: float
-    problems: list of problem ids
+    status: error | 'OK'
+    // list of blocks
+    blocks: [{
+        id: integer - id of the block
+        name: string
+        description: string
+        lat: float
+        lon: float
+    }]
 }
 
 GET /block/[id]
