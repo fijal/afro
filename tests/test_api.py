@@ -88,6 +88,12 @@ async def test_block_problem(db):
     assert r == {'status': 'OK', 'sector': 0, 'lat': 32.15, 'lon': 15.36,
                  'name': 'foo', 'problems': [problem_id], 'description': None}
 
+    r = await post(client, '/block/delete', form={'id': block_id})
+    assert r == {'status': 'OK'}
+    r = await client.get('/block/%s' % block_id)
+    r = json.loads((await r.get_data()).decode('utf8'))
+    assert r['status'] != 'OK'
+
 @pytest.mark.asyncio
 async def test_pictures(db, tmpdir):
     client = db.test_client()
@@ -177,4 +183,3 @@ async def test_boulder_list(db):
         {'id': block_id, 'name': 'foo', 'description': 'some descr', 'lat': 32.15, 'lon': 15.36},
         {'id': block2_id, 'name': 'foo2', 'description': 'some descr2', 'lat': 2.15, 'lon': 5.36}
     ]
-    

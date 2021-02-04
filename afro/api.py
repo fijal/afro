@@ -122,7 +122,7 @@ def register_routes(app, state):
     @app.route('/block/<int:block_id>/photos')
     async def block_get_photos(block_id):
         q = list(db.execute(select([block.c.id]).where(
-            problem.c.id == block_id)))
+            block.c.id == block_id)))
         if len(q) == 0:
             return {'status': 'no block id %d found' % block_id}
         q = list(db.execute(select([photo_block.c.photo]).where(
@@ -149,6 +149,17 @@ def register_routes(app, state):
                 'lon': lon
                 })
         return {'status': 'OK', 'blocks': r}
+
+    @app.route('/block/delete', methods=['POST'])
+    @wrap(required_args=dict(id=int))
+    async def block_delete(parameters):
+        block_id = parameters['id']
+        q = list(db.execute(select([block.c.id]).where(
+            block.c.id == block_id)))
+        if len(q) == 0:
+            return {'status': 'no block id %d found' % block_id}
+        db.execute(block.delete().where(block.c.id == block_id))
+        return {'status': 'OK'}
 
     @app.route('/problem/add', methods=['POST'])
     @wrap(required_args=dict(block=int), optional_args=dict(
