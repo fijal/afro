@@ -75,7 +75,7 @@ async def test_block_problem(db):
         ))
     problem_id = r['id']
     resp = await client.get('/problem/%s' % (problem_id + 14))
-    assert resp.status_code == 200
+    assert resp.status_code != 200
     r = json.loads((await resp.get_data()).decode('utf8'))
     assert r['status'] != 'OK'
 
@@ -93,6 +93,20 @@ async def test_block_problem(db):
     r = await client.get('/block/%s' % block_id)
     r = json.loads((await r.get_data()).decode('utf8'))
     assert r['status'] != 'OK'
+
+@pytest.mark.asyncio
+async def test_block_update(db):
+    client = db.test_client()
+
+    r = await post(client, '/block/add', form={'sector': '0',
+        'name': 'foo', 'lat': '32.15', 'lon': '15.36'})
+    block_id = r['id']
+
+    r = await get(client, '/block/%s' % block_id)
+    assert r['name'] == 'foo'
+    await post(client, '/block/%s' % block_id, form={'name': 'foo2'})
+    r = await get(client, '/block/%s' % block_id)
+    assert r['name'] == 'foo2'
 
 @pytest.mark.asyncio
 async def test_pictures(db, tmpdir):

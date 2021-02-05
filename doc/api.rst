@@ -18,6 +18,18 @@ Returns:
     status: error | 'OK'
 }
 
+POST /block/[id]
+
+Update a specific block
+
+Input:
+
+id: integer - ID of the block to update
+name: string - optional - change the name
+description: string - optional - change the description
+lat: float - optional - change the lattitude
+lon: float - optional - change the longitude
+
 POST /block/delete
 
 Deletes a block

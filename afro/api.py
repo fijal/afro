@@ -109,7 +109,7 @@ def register_routes(app, state):
                 block.c.lat, block.c.lon, block.c.description]).where(
                                        block.c.id == block_id)))
         if len(q) == 0:
-            return {'status': 'no block id %s found' % block_id}
+            return {'status': 'no block id %s found' % block_id}, 505
         assert len(q) == 1
         q = list(q[0])
         prob_q = list(db.execute(
@@ -119,12 +119,29 @@ def register_routes(app, state):
                 'lat': q[2], 'lon': q[3], 'problems': problems,
                 'description': q[4]}
 
+    @app.route('/block/<int:block_id>', methods=['POST'])
+    @wrap(required_args={}, optional_args=dict(
+        name=str, description=str, lat=float, lon=float
+        ))
+    async def block_update(parameters, block_id):
+        q = list(db.execute(
+            select([block.c.sector, block.c.name,
+                block.c.lat, block.c.lon, block.c.description]).where(
+                                       block.c.id == block_id)))
+        if len(q) == 0:
+            return {'status': 'no block id %s found' % block_id}, 505
+        assert len(q) == 1
+
+        db.execute(
+            block.update().where(block.c.id == block_id).values(**parameters))
+        return {'status': "OK"}
+
     @app.route('/block/<int:block_id>/photos')
     async def block_get_photos(block_id):
         q = list(db.execute(select([block.c.id]).where(
             block.c.id == block_id)))
         if len(q) == 0:
-            return {'status': 'no block id %d found' % block_id}
+            return {'status': 'no block id %d found' % block_id}, 505
         q = list(db.execute(select([photo_block.c.photo]).where(
                  photo_block.c.block == q[0][0])))
         return {'status': 'OK', 'photos': [x[0] for x in q]}
@@ -132,10 +149,10 @@ def register_routes(app, state):
     @app.route('/block/list')
     async def block_list():
         if 'q' not in request.args:
-            return {'status': 'Query not passed, please pass q parameter'}
+            return {'status': 'Query not passed, please pass q parameter'}, 505
         m = re.match(r'^sector:(\d+)$', request.args['q'])
         if not m:
-            return {'status': 'Unsupported query - %s' % request.args['q']}
+            return {'status': 'Unsupported query - %s' % request.args['q']}, 505
         sector_id = int(m.group(1))
         l = list(db.execute(select([block.c.id, block.c.name, block.c.description,
             block.c.lat, block.c.lon]).where(block.c.sector == sector_id)))
@@ -157,7 +174,7 @@ def register_routes(app, state):
         q = list(db.execute(select([block.c.id]).where(
             block.c.id == block_id)))
         if len(q) == 0:
-            return {'status': 'no block id %d found' % block_id}
+            return {'status': 'no block id %d found' % block_id}, 505
         db.execute(block.delete().where(block.c.id == block_id))
         return {'status': 'OK'}
 
@@ -177,7 +194,7 @@ def register_routes(app, state):
             select([problem.c.block, problem.c.name, problem.c.description,
             problem.c.grade]).where(problem.c.id == problem_id)))
         if len(q) == 0:
-            return {'status': 'no problem id %s found' % problem_id}
+            return {'status': 'no problem id %s found' % problem_id}, 505
         assert len(q) == 1
         q = list(q[0])
         return {"status": 'OK', 'block': q[0], 'name': q[1],
@@ -188,7 +205,7 @@ def register_routes(app, state):
         q = list(db.execute(select([problem.c.id]).where(
             problem.c.id == problem_id)))
         if len(q) == 0:
-            return {'status': 'no problem id %d found' % problem_id}
+            return {'status': 'no problem id %d found' % problem_id}, 505
         q = list(db.execute(select([photo_problem.c.photo]).where(
                  photo_problem.c.problem == q[0][0])))
         return {'status': 'OK', 'photos': [x[0] for x in q]}
@@ -211,14 +228,14 @@ def register_routes(app, state):
         q = list(db.execute(select([photo.c.filename]).where(
             photo.c.filename == photo_filename)))
         if len(q) == 0:
-            return {'status': 'photo %s not found' % photo_filename}
+            return {'status': 'photo %s not found' % photo_filename}, 505
         tp = parameters['type']
         id = parameters['id']
         if tp == 'problem':
             q = list(db.execute(select([problem.c.id]).where(
                 problem.c.id == id)))
             if len(q) == 0:
-                return {'status': 'unknown problem id %d' % id}
+                return {'status': 'unknown problem id %d' % id}, 505
             db.execute(photo_problem.insert().values({
                 'photo': photo_filename,
                 'problem': id
@@ -228,21 +245,21 @@ def register_routes(app, state):
             q = list(db.execute(select([block.c.id]).where(
                 block.c.id == id)))
             if len(q) == 0:
-                return {'status': 'unknown block id %d' % id}
+                return {'status': 'unknown block id %d' % id}, 505
             db.execute(photo_block.insert().values({
                 'photo': photo_filename,
                 'block': id
                 }))
             return {'status': 'OK'}
         else:
-            return {'status': 'unknown type %s' % parameters['type']}
+            return {'status': 'unknown type %s' % parameters['type']}, 505
 
     @app.route('/photo/<photo_filename>')
     async def photo_get(photo_filename):
         q = list(db.execute(select([photo.c.filename]).where(
             photo.c.filename == photo_filename)))
         if len(q) == 0:
-            return {'status': 'photo not found'}
+            return {'status': 'photo not found'}, 505
         lines = list(db.execute(select([line.c.id, line.c.problem]).where(
             line.c.photo == photo_filename)))
         return {'status': 'OK', 'type': 'jpg', 'lines': [
@@ -272,10 +289,10 @@ def register_routes(app, state):
         photo_filename = parameters['photo_filename']
         r = list(db.execute(select([problem.c.id]).where(problem.c.id == problem_id)))
         if len(r) == 0:
-            return {'status': "can't find problem id %d" % problem_id}
+            return {'status': "can't find problem id %d" % problem_id}, 505
         r = list(db.execute(select([photo.c.filename]).where(photo.c.filename == photo_filename)))
         if len(r) == 0:
-            return {'status': "can't find photo filename %s" % photo_filename}
+            return {'status': "can't find photo filename %s" % photo_filename}, 505
         r = db.execute(line.insert().values({
             'problem': problem_id,
             'photo': photo_filename
@@ -294,7 +311,7 @@ def register_routes(app, state):
     async def line_get(line_id):
         r = list(db.execute(select([line.c.id]).where(line.c.id == line_id)))
         if len(r) == 0:
-            return {'status': "can't find line ID %d" % line_id}
+            return {'status': "can't find line ID %d" % line_id}, 505
         points = get_all_points(db, line_id)
         return {'status': 'OK', 'points': points}
 
