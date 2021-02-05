@@ -44,7 +44,7 @@ async def test_parameter_passing(db):
     client = db.test_client()
     
     resp = await client.post('/block/add')
-    assert resp.status_code == 200
+    assert resp.status_code != 200
     r = json.loads((await resp.get_data()).decode('utf8'))
     assert 'Verification error' in r['status']
     

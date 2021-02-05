@@ -81,7 +81,7 @@ def wrap(required_args=None, optional_args=None):
                 r['status'] = 'OK'
                 return r
             except VerifyError as e:
-                return {'status': 'Verification error: %s' % e.args[0]}
+                return {'status': 'Verification error: %s' % e.args[0]}, 505
         func.__name__ = orig_func.__name__
         return func
     return inner_function
