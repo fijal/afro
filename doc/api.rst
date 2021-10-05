@@ -1,3 +1,5 @@
+API
+===
 
 POST /block/add
 
@@ -63,9 +65,10 @@ Returns:
     }]
 }
 
-GET /block/[id]
+GET /block/[id]?details=0
 
-Get a specific block
+Get a specific block. If details = 1, then a list of problems is retrieved
+with details
 
 Returns:
 
@@ -76,7 +79,8 @@ Returns:
     sector: integer - id of the sector
     lat: float
     lon: float
-    problems: list of problem ids    
+    problems: list of problem ids | list of dictionaries (as per /problem/[id])
+              with problem details
 }
 
 GET /block/[id]/photos

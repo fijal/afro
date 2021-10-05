@@ -197,3 +197,31 @@ async def test_boulder_list(db):
         {'id': block_id, 'name': 'foo', 'description': 'some descr', 'lat': 32.15, 'lon': 15.36},
         {'id': block2_id, 'name': 'foo2', 'description': 'some descr2', 'lat': 2.15, 'lon': 5.36}
     ]
+
+@pytest.mark.asyncio
+async def test_boulder_details(db):
+    client = db.test_client()
+
+    r = await post(client, '/block/add', form={'sector': '0',
+        'name': 'foo', 'description': 'some descr', 'lat': '32.15', 'lon': '15.36'})
+    block_id = r['id']
+
+    r = await post(client, '/problem/add', form=dict(
+        block=block_id, name="foo bar"
+        ))
+    problem_id = r['id']
+
+    r = await get(client, '/block/%d?details=1' % block_id)
+    assert r == {
+        'status': 'OK',
+        'description': 'some descr',
+        'name': 'foo',
+        'lat': 32.15,
+        'lon': 15.36,
+        'sector': 0,
+        'problems': [{
+            'id': problem_id,
+            'name': 'foo bar',
+            'grade': None
+        }]
+    }

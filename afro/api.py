@@ -112,9 +112,19 @@ def register_routes(app, state):
             return {'status': 'no block id %s found' % block_id}, 505
         assert len(q) == 1
         q = list(q[0])
-        prob_q = list(db.execute(
-            select([problem.c.id]).where(problem.c.block == block_id)))
-        problems = [x[0] for x in prob_q]
+        if request.args.get('details', 0):
+            prob_q = list(db.execute(
+                select([problem.c.id, problem.c.name, problem.c.grade]).where(
+                    problem.c.block == block_id)))
+            problems = [{
+                'id': x[0],
+                'name': x[1],
+                'grade': x[2]
+            } for x in prob_q]
+        else:
+            prob_q = list(db.execute(
+                select([problem.c.id]).where(problem.c.block == block_id)))
+            problems = [x[0] for x in prob_q]
         return {"status": 'OK', 'sector': q[0], 'name': q[1],
                 'lat': q[2], 'lon': q[3], 'problems': problems,
                 'description': q[4]}
